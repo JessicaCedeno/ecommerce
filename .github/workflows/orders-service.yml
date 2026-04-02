@@ -153,9 +153,13 @@ jobs:
           npx standard-version \
             --releaseCommitMessageFormat "chore(release): {{currentTag}} [skip ci]"
 
-      # 6 ── Push the version-bump commit AND the new tag to main
+      # 6 ── Pull any commits that landed while CI was running (e.g. the
+      #       other service's release job), then push our bump commit and tag.
+      #       The rebase is safe because each service only touches its own
+      #       package.json and CHANGELOG.md — no cross-service conflicts.
       - name: Push version commit and tag
         run: |
+          git pull --rebase origin main
           git push --follow-tags origin main
 
       # 7 ── Extract the version that standard-version just wrote so we
@@ -172,7 +176,8 @@ jobs:
 
       # 9 ── Build the multi-stage image (production target).
       #       push: false  →  image is built & verified locally only;
-      #       no registry credentials required in this simulation.
+      #       load: true   →  loads the image into the local Docker daemon
+      #       so the smoke-test step can run it with `docker run`.
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
@@ -180,6 +185,7 @@ jobs:
           file: ./orders-service/Dockerfile
           target: production
           push: false
+          load: true
           # Two tags: the exact semver and the rolling 'latest'
           tags: |
             orders-service:${{ steps.pkg.outputs.version }}
