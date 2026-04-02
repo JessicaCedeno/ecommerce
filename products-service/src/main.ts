@@ -8,12 +8,14 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-    transformOptions: { enableImplicitConversion: true },
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
   app.enableCors();
@@ -22,11 +24,17 @@ async function bootstrap() {
     .setDescription('E-commerce product catalog microservice API')
     .setVersion('1.0')
     .addServer('http://localhost:3001')
-    .addTag('products').addTag('health').build();
-  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
+    .addTag('products')
+    .addTag('health')
+    .build();
+  SwaggerModule.setup(
+    'api/docs',
+    app,
+    SwaggerModule.createDocument(app, config),
+  );
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   console.log(`Products Service running on port ${port}`);
   console.log(`Swagger: http://localhost:${port}/api/docs`);
 }
-bootstrap();
+void bootstrap();

@@ -42,7 +42,9 @@ describe('ProductsService', () => {
     it('returns active products by default', async () => {
       mockRepo.find.mockResolvedValue([makeProduct()]);
       const result = await service.findAll({});
-      expect(mockRepo.find).toHaveBeenCalledWith(expect.objectContaining({ where: { isActive: true } }));
+      expect(mockRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { isActive: true } }),
+      );
       expect(result).toHaveLength(1);
     });
 
@@ -50,13 +52,18 @@ describe('ProductsService', () => {
       const inactive = makeProduct({ isActive: false });
       mockRepo.find.mockResolvedValue([inactive]);
       await service.findAll({ isActive: false });
-      expect(mockRepo.find).toHaveBeenCalledWith(expect.objectContaining({ where: { isActive: false } }));
+      expect(mockRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { isActive: false } }),
+      );
     });
 
     it('applies search filter on name', async () => {
       mockRepo.find.mockResolvedValue([makeProduct()]);
       await service.findAll({ search: 'laptop' });
-      const callArg = mockRepo.find.mock.calls[0][0];
+      const mockCalls = mockRepo.find.mock.calls as unknown as Array<
+        [{ where: { name: { value: string } } }]
+      >;
+      const callArg = mockCalls[0][0];
       expect(callArg.where.name.value).toContain('laptop');
     });
 
@@ -82,12 +89,16 @@ describe('ProductsService', () => {
     it('filters by isActive:true when looking up by id', async () => {
       mockRepo.findOne.mockResolvedValue(makeProduct());
       await service.findOne('uuid-1');
-      expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { id: 'uuid-1', isActive: true } });
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'uuid-1', isActive: true },
+      });
     });
 
     it('throws NotFoundException when product does not exist', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.findOne('missing-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('missing-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException for a soft-deleted product', async () => {
@@ -110,8 +121,16 @@ describe('ProductsService', () => {
       const product = makeProduct();
       mockRepo.create.mockReturnValue(product);
       mockRepo.save.mockResolvedValue(product);
-      const result = await service.create({ name: 'Test Product', price: 99.99, stock: 10 });
-      expect(mockRepo.create).toHaveBeenCalledWith({ name: 'Test Product', price: 99.99, stock: 10 });
+      const result = await service.create({
+        name: 'Test Product',
+        price: 99.99,
+        stock: 10,
+      });
+      expect(mockRepo.create).toHaveBeenCalledWith({
+        name: 'Test Product',
+        price: 99.99,
+        stock: 10,
+      });
       expect(mockRepo.save).toHaveBeenCalledWith(product);
       expect(result).toEqual(product);
     });
@@ -120,14 +139,21 @@ describe('ProductsService', () => {
       const product = makeProduct({ description: 'Nice item' });
       mockRepo.create.mockReturnValue(product);
       mockRepo.save.mockResolvedValue(product);
-      const result = await service.create({ name: 'Test', price: 10, stock: 5, description: 'Nice item' });
+      const result = await service.create({
+        name: 'Test',
+        price: 10,
+        stock: 5,
+        description: 'Nice item',
+      });
       expect(result.description).toBe('Nice item');
     });
 
     it('propagates save errors (e.g. unique constraint)', async () => {
       mockRepo.create.mockReturnValue(makeProduct());
       mockRepo.save.mockRejectedValue(new Error('duplicate key value'));
-      await expect(service.create({ name: 'Dup', price: 1, stock: 1 })).rejects.toThrow('duplicate key value');
+      await expect(
+        service.create({ name: 'Dup', price: 1, stock: 1 }),
+      ).rejects.toThrow('duplicate key value');
     });
   });
 
@@ -139,13 +165,17 @@ describe('ProductsService', () => {
       mockRepo.findOne.mockResolvedValue(original);
       mockRepo.save.mockResolvedValue(updated);
       const result = await service.update('uuid-1', { price: 75 });
-      expect(mockRepo.save).toHaveBeenCalledWith(expect.objectContaining({ price: 75 }));
+      expect(mockRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ price: 75 }),
+      );
       expect(result.price).toBe(75);
     });
 
     it('throws NotFoundException when updating non-existent product', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.update('ghost-id', { price: 10 })).rejects.toThrow(NotFoundException);
+      await expect(service.update('ghost-id', { price: 10 })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('allows partial updates (only provided fields change)', async () => {
@@ -164,12 +194,16 @@ describe('ProductsService', () => {
       mockRepo.findOne.mockResolvedValue(makeProduct());
       mockRepo.save.mockResolvedValue(makeProduct({ isActive: false }));
       await service.remove('uuid-1');
-      expect(mockRepo.save).toHaveBeenCalledWith(expect.objectContaining({ isActive: false }));
+      expect(mockRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ isActive: false }),
+      );
     });
 
     it('throws NotFoundException when product does not exist', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.remove('ghost-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('ghost-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('does not call save if product is not found', async () => {

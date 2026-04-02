@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Product } from './product.entity';
@@ -14,20 +20,32 @@ function escapeLike(value: string): string {
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
-  constructor(@InjectRepository(Product) private readonly productRepository: Repository<Product>) {}
+  constructor(
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
+  ) {}
 
   async findAll(query: QueryProductDto): Promise<Product[]> {
     const isActive = query.isActive !== undefined ? query.isActive : true;
     if (query.search) {
       const safe = escapeLike(query.search);
-      return this.productRepository.find({ where: { name: Like(`%${safe}%`), isActive }, order: { createdAt: 'DESC' } });
+      return this.productRepository.find({
+        where: { name: Like(`%${safe}%`), isActive },
+        order: { createdAt: 'DESC' },
+      });
     }
-    return this.productRepository.find({ where: { isActive }, order: { createdAt: 'DESC' } });
+    return this.productRepository.find({
+      where: { isActive },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<Product> {
-    const product = await this.productRepository.findOne({ where: { id, isActive: true } });
-    if (!product) throw new NotFoundException(`Product with id "${id}" not found`);
+    const product = await this.productRepository.findOne({
+      where: { id, isActive: true },
+    });
+    if (!product)
+      throw new NotFoundException(`Product with id "${id}" not found`);
     return product;
   }
 
@@ -38,7 +56,10 @@ export class ProductsService {
     return saved;
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
+  async update(
+    id: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
     const product = await this.findOne(id);
     Object.assign(product, updateProductDto);
     return this.productRepository.save(product);
@@ -60,7 +81,10 @@ export class ProductsService {
       .createQueryBuilder()
       .update(Product)
       .set({ stock: () => `stock - ${quantity}` })
-      .where('id = :id AND stock >= :quantity AND "isActive" = true', { id, quantity })
+      .where('id = :id AND stock >= :quantity AND "isActive" = true', {
+        id,
+        quantity,
+      })
       .returning('*')
       .execute();
 
@@ -75,12 +99,14 @@ export class ProductsService {
         this.logger.warn(`Reserve attempt on inactive product ${id}`);
         throw new BadRequestException(`Product ${id} is not available`);
       }
-      this.logger.warn(`Insufficient stock for product ${id}: requested ${quantity}, available ${product.stock}`);
+      this.logger.warn(
+        `Insufficient stock for product ${id}: requested ${quantity}, available ${product.stock}`,
+      );
       throw new ConflictException(`Insufficient stock for product ${id}`);
     }
 
     this.logger.log(`Reserved ${quantity} units of product ${id}`);
-    return result.raw[0] as Product;
+    return (result.raw as Product[])[0];
   }
 
   /**
