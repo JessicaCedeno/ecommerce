@@ -9,7 +9,10 @@ import { HealthModule } from './health/health.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRootAsync({ useFactory: databaseConfig, inject: [ConfigService] }),
+    TypeOrmModule.forRootAsync({
+      useFactory: databaseConfig,
+      inject: [ConfigService],
+    }),
     HttpModule,
     OrdersModule,
     HealthModule,
