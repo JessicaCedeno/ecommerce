@@ -1,0 +1,154 @@
+version: '3.9'
+
+services:
+  postgres-products:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: products_db
+    volumes:
+      - postgres_products_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d products_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-orders:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orders_db
+    volumes:
+      - postgres_orders_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d orders_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-gateway:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gateway_db
+    volumes:
+      - postgres_gateway_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d gateway_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  products-service:
+    build:
+      context: ./products-service
+      target: production
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: postgres-products
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_NAME: products_db
+    depends_on:
+      postgres-products:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/api/health || exit 1']
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  orders-service:
+    build:
+      context: ./orders-service
+      target: production
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DB_HOST: postgres-orders
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_NAME: orders_db
+      PRODUCTS_SERVICE_URL: http://products-service:3001
+    depends_on:
+      postgres-orders:
+        condition: service_healthy
+      products-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3002/api/health || exit 1']
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      target: production
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: postgres-gateway
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_NAME: gateway_db
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-gateway-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      PRODUCTS_SERVICE_URL: http://products-service:3001
+      ORDERS_SERVICE_URL: http://orders-service:3002
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres-gateway:
+        condition: service_healthy
+      products-service:
+        condition: service_healthy
+      orders-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/api/health || exit 1']
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      # Browser-visible URL (goes through host's localhost)
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api
+      # Server-side URLs (container-to-container via Docker network)
+      AUTH_API_URL: http://api-gateway:3000/api/auth
+      PRODUCTS_API_URL: http://api-gateway:3000/api/products
+      ORDERS_API_URL: http://api-gateway:3000/api/orders
+    ports:
+      - '8080:3000'
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+
+volumes:
+  postgres_products_data:
+  postgres_orders_data:
+  postgres_gateway_data:

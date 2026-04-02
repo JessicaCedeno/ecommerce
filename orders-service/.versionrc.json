@@ -1,0 +1,14 @@
+{
+  "tagPrefix": "orders-service-v",
+  "path": ".",
+  "changelogFile": "CHANGELOG.md",
+  "types": [
+    { "type": "feat",     "section": "Features" },
+    { "type": "fix",      "section": "Bug Fixes" },
+    { "type": "perf",     "section": "Performance" },
+    { "type": "refactor", "section": "Refactoring" },
+    { "type": "chore",    "hidden": true },
+    { "type": "docs",     "hidden": true },
+    { "type": "test",     "hidden": true }
+  ]
+}
