@@ -14,18 +14,26 @@ export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
 
   constructor(
-    @InjectRepository(Order) private readonly orderRepository: Repository<Order>,
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly productsClient: ProductsClientService,
   ) {}
 
   findAll(query: QueryOrderDto): Promise<Order[]> {
     const where = query.status ? { status: query.status } : {};
-    return this.orderRepository.find({ where, order: { createdAt: 'DESC' }, relations: ['items'] });
+    return this.orderRepository.find({
+      where,
+      order: { createdAt: 'DESC' },
+      relations: ['items'],
+    });
   }
 
   async findOne(id: string): Promise<Order> {
-    const order = await this.orderRepository.findOne({ where: { id }, relations: ['items'] });
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['items'],
+    });
     if (!order) throw new NotFoundException(`Order ${id} not found`);
     return order;
   }
@@ -45,7 +53,10 @@ export class OrdersService {
       for (const itemDto of dto.items) {
         // reserveStock atomically validates AND decrements in one DB UPDATE.
         // If two concurrent requests race for the last unit, only one succeeds.
-        const product = await this.productsClient.reserveStock(itemDto.productId, itemDto.quantity);
+        const product = await this.productsClient.reserveStock(
+          itemDto.productId,
+          itemDto.quantity,
+        );
         reserved.push({ productId: product.id, quantity: itemDto.quantity });
 
         const subtotal = Number(product.price) * itemDto.quantity;
@@ -60,7 +71,11 @@ export class OrdersService {
         items.push(item);
       }
 
-      const order = qr.manager.create(Order, { notes: dto.notes, totalAmount: total, items });
+      const order = qr.manager.create(Order, {
+        notes: dto.notes,
+        totalAmount: total,
+        items,
+      });
       const saved = await qr.manager.save(Order, order);
       await qr.commitTransaction();
       this.logger.log(`Order created: ${saved.id}`);
@@ -88,7 +103,10 @@ export class OrdersService {
     const saved = await this.orderRepository.save(order);
 
     // When an order is cancelled, release the reserved stock back to products-service
-    if (dto.status === OrderStatus.CANCELLED && previousStatus !== OrderStatus.CANCELLED) {
+    if (
+      dto.status === OrderStatus.CANCELLED &&
+      previousStatus !== OrderStatus.CANCELLED
+    ) {
       await Promise.all(
         order.items.map(({ productId, quantity }) =>
           this.productsClient.releaseStock(productId, quantity),

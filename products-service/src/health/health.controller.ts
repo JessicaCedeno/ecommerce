@@ -5,5 +5,11 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 export class HealthController {
   @Get()
   @ApiOperation({ summary: 'Health check' })
-  check() { return { status: 'ok', service: 'products-service', timestamp: new Date().toISOString() }; }
+  check() {
+    return {
+      status: 'ok',
+      service: 'products-service',
+      timestamp: new Date().toISOString(),
+    };
+  }
 }

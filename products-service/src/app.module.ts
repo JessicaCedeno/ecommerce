@@ -8,7 +8,10 @@ import { databaseConfig } from './config/database.config';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
-    TypeOrmModule.forRootAsync({ useFactory: databaseConfig, inject: [ConfigService] }),
+    TypeOrmModule.forRootAsync({
+      useFactory: databaseConfig,
+      inject: [ConfigService],
+    }),
     ProductsModule,
     HealthModule,
   ],
